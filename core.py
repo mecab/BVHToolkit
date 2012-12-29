@@ -4,6 +4,7 @@ import math
 from cgkit.bvh import Node
 from cgkit.cgtypes import mat3, mat4
 
+
 class Counter(object):
     index = None
     
@@ -38,9 +39,11 @@ class Bone(object):
         if type(index_or_node) is int:
             index = index_or_node
         else:
-            index = self.node_list.index(index_or_node)
-        
+            index = self.get_bone_index(index_or_node)
         return self.param_offset_list[index]
+        
+    def get_bone_index(self, node):
+        return self.node_list.index(node)
 
 
 class Animation(object):
@@ -54,21 +57,27 @@ class Animation(object):
         else:
             self.frames = []
 
-
     def add_frame(self, frame):
         self.frames.append(frame)
-
 
     def get_pose(self, frame_num):
         return Pose(self.bone, self.frames[frame_num])
 
-        
+
 class Pose(object):
     matrixes_global = None
     matrixes_local = None
     positions = None
     frame = None
     bone = None
+    _mat_funcs = {
+        "Xrotation": lambda rot: mat4.rotation(rot * math.pi / 180, [1, 0, 0]),
+        "Yrotation": lambda rot: mat4.rotation(rot * math.pi / 180, [0, 1, 0]),
+        "Zrotation": lambda rot: mat4.rotation(rot * math.pi / 180, [0, 0, 1]),
+        "Xposition": lambda pos: mat4.translation((pos, 0, 0)),
+        "Yposition": lambda pos: mat4.translation((0, pos, 0)),
+        "Zposition": lambda pos: mat4.translation((0, 0, pos)),
+        }
     __last_matrix = None
 
     def __init__(self, bone, frame):
@@ -79,8 +88,14 @@ class Pose(object):
         self.bone = bone
         self.frame = frame
         self.process_node(bone.root)
-        print self.positions
-        print "---"
+        
+    def _calc_mat(self, node):
+        mat = mat4.identity()
+        channels = node.channels
+        param_offset = self.bone.get_offset(node)
+        for i, channel in enumerate(channels):
+            mat *= self._mat_funcs[channel](self.frame[param_offset + i])
+        return mat
 
     def process_node(self, node):
         if node.isRoot():
@@ -91,12 +106,9 @@ class Pose(object):
             index = self.bone.get_offset(node)
             rots = self.frame[index:index + 3]
 
-        mat = mat4.rotation(rots[0] * math.pi / 180, [0, 0, 1]) * \
-              mat4.rotation(rots[1] * math.pi / 180, [0, 1, 0]) * \
-              mat4.rotation(rots[2] * math.pi / 180, [1, 0, 0])
+        mat = self._calc_mat(node)
         
         self.positions.append(self.__last_matrix * node.offset)
-        
         self.matrixes_local.append(mat)
         mat_g = self.__last_matrix * mat4.translation(node.offset) * mat
         self.matrixes_global.append(mat_g)
