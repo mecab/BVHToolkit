@@ -2,7 +2,7 @@
 import os
 import math
 import itertools
-import unittest2
+import unittest
 import core as target
 from cgkit.bvh import Node
 from cgkit.bvh import BVHReader
@@ -31,7 +31,7 @@ class CgTypesAssertionMixin(object):
                               itertools.chain.from_iterable(m2)):
             self.assertAlmostEqual(val1, val2)
 
-class BoneTest(unittest2.TestCase):
+class BoneTest(unittest.TestCase):
     root = None
     def setUp(self):
         def onHierarchy(root):
@@ -62,7 +62,7 @@ class BoneTest(unittest2.TestCase):
         self.assertEqual(bone.get_offset(1), 6)
         self.assertEqual(bone.get_offset(3), 12)
 
-class PoseTest(unittest2.TestCase, CgTypesAssertionMixin):
+class PoseTest(unittest.TestCase, CgTypesAssertionMixin):
     root = None
     frames = None
 
@@ -80,7 +80,6 @@ class PoseTest(unittest2.TestCase, CgTypesAssertionMixin):
         reader.onHierarchy = onHierarchy
         reader.onFrame = onFrame
         reader.read()
-
 
     def test_add_frame(self):
         anim = target.Animation(target.Bone(self.root))
@@ -123,5 +122,5 @@ class PoseTest(unittest2.TestCase, CgTypesAssertionMixin):
         
         
 if __name__ == '__main__':
-    unittest2.main()
+    unittest.main()
     
