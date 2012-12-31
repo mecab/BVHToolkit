@@ -19,20 +19,23 @@ class CgTypesAssertionMixin(object):
             raise AssertionError("First object is not vec3", v1)
         if not isinstance(v2, _vec3):
             raise AssertionError("Second object is not vec3", v2)
-        
+
         for val1, val2 in zip(v1, v2):
             self.assertAlmostEqual(val1, val2)
-            
+
     def assertMat4Equal(self, m1, m2):
         if not isinstance(m1, _mat4):
             raise AssertionError("First object is not mat4", m1)
         if not isinstance(m2, _mat4):
             raise AssertionError("Second object is not mat4", m2)
-            
+
         for val1, val2 in zip(itertools.chain.from_iterable(m1),
                               itertools.chain.from_iterable(m2)):
             self.assertAlmostEqual(val1, val2)
 
+
+bvh_serial_path = os.path.join(os.path.dirname(__file__), "testBVH.bvh")
+bvh_parallel_path = os.path.join(os.path.dirname(__file__), "testBVH2.bvh")
 bvh_serial = {"root": None, "frames": None}
 bvh_parallel = {"root": None, "frames": None}
 
@@ -43,19 +46,19 @@ def setUpModule():
         def __init__(self, path=None):
             BVHReader.__init__(self, path)
             self.frames = []
-            
+
         def onHierarchy(self, root):
             self.root = root
-            
+
         def onFrame(self, frame):
             self.frames.append(frame)
-            
-    reader = CustomBVHReader(os.path.join(os.path.dirname(__file__), "testBVH.bvh"))
+
+    reader = CustomBVHReader(bvh_serial_path)
     reader.read()
     bvh_serial["root"] = reader.root
     bvh_serial["frames"] = reader.frames
-        
-    reader = CustomBVHReader(os.path.join(os.path.dirname(__file__), "testBVH2.bvh"))
+
+    reader = CustomBVHReader(bvh_parallel_path)
     reader.read()
     bvh_parallel["root"] = reader.root
     bvh_parallel["frames"] = reader.frames
@@ -64,13 +67,13 @@ def setUpModule():
 class BVHAnimationReaderTest(unittest.TestCase):
 
     def test_unloaded(self):
-        reader = target.BVHAnimationReader()
+        reader = target.BVHAnimationReader(bvh_serial_path)
         self.assertIsNone(reader.bone)
         self.assertIsNone(reader.root)
         self.assertIsNone(reader.frames)
-        
+
     def test_loaded(self):
-        reader = target.BVHAnimationReader(os.path.join(os.path.dirname(__file__), "testBVH.bvh"))
+        reader = target.BVHAnimationReader(bvh_parallel_path)
         reader.read()
         self.assertIsNotNone(reader.bone)
         self.assertEqual(reader.bone.root, reader.root)
@@ -82,16 +85,16 @@ class BoneTest(unittest.TestCase):
     def test_init_serial(self):
         bone = target.Bone(bvh_serial["root"])
         self.assertEqual(len(bone.node_list), 4)
-        
+
         self.assertEqual(bone.node_list[0].name, "root_name")
         self.assertEqual(bone.node_list[1].name, "joint1")
         self.assertEqual(bone.node_list[2].name, "joint2")
         self.assertEqual(bone.node_list[3].name, "End Site")
-        
+
     def test_init_parallel(self):
         bone = target.Bone(bvh_parallel["root"])
         self.assertEqual(len(bone.node_list), 5)
-        
+
         self.assertEqual(bone.node_list[0].name, "root_name")
         self.assertEqual(bone.node_list[1].name, "joint1")
         self.assertEqual(bone.node_list[2].name, "End Site")
@@ -102,7 +105,7 @@ class BoneTest(unittest.TestCase):
         bone = target.Bone(bvh_serial["root"])
         self.assertEqual(bone.get_bone_index(bone.node_list[0]), 0)
         self.assertEqual(bone.get_bone_index(bone.node_list[3]), 3)
-        
+
     def test_offset_serial(self):
         bone = target.Bone(bvh_serial["root"])
         self.assertEqual(bone.get_offset(0), 0)
@@ -113,7 +116,7 @@ class BoneTest(unittest.TestCase):
         self.assertEqual(bone.get_offset(bone.node_list[1]), 6)
         self.assertEqual(bone.get_offset(bone.node_list[2]), 9)
         self.assertEqual(bone.get_offset(bone.node_list[3]), 12)
-        
+
     def test_offset_parallel(self):
         bone = target.Bone(bvh_parallel["root"])
         self.assertEqual(bone.get_offset(0), 0)
@@ -134,7 +137,9 @@ class AnimationTest(unittest.TestCase):
         anim = target.Animation(target.Bone(bvh_serial["root"]))
         anim.add_frame(bvh_serial["frames"][0])
         self.assertEqual(len(anim.frames), 1)
-        self.assertListEqual(anim.frames[0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+        self.assertListEqual(anim.frames[0],
+                             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+
 
 class PoseTest(unittest.TestCase, CgTypesAssertionMixin):
 
@@ -145,7 +150,7 @@ class PoseTest(unittest.TestCase, CgTypesAssertionMixin):
         pose = anim.get_pose(0)
         self.assertVec3Equal(pose.get_position(0), vec3(0, 0, 0))
         self.assertVec3Equal(pose.get_position(3), vec3(0, 60, 0))
-        
+
         pose = anim.get_pose(1)
         self.assertVec3Equal(pose.get_position(3), vec3(0, -60, 0))
 
@@ -157,11 +162,11 @@ class PoseTest(unittest.TestCase, CgTypesAssertionMixin):
         self.assertVec3Equal(pose.get_position(0), vec3(0, 0, 0))
         self.assertVec3Equal(pose.get_position(2), vec3(0, 30, 0))
         self.assertVec3Equal(pose.get_position(4), vec3(0, 0, 30))
-        
+
         pose = anim.get_pose(1)
         self.assertVec3Equal(pose.get_position(2), vec3(0, -10, 0))
         self.assertVec3Equal(pose.get_position(4), vec3(0, 0, -10))
-        
+
     def test_calc_matrix(self):
         n1 = Node()
         n1.channels = ["Xposition", "Yposition", "Zposition"]
@@ -169,7 +174,7 @@ class PoseTest(unittest.TestCase, CgTypesAssertionMixin):
         n2.channels = []
         n3 = Node()
         n3.channels = ["Xrotation", "Yrotation", "Zrotation"]
-        
+
         n1.children.append(n2)
         n2.children.append(n3)
         bone = target.Bone(n1)
@@ -177,14 +182,13 @@ class PoseTest(unittest.TestCase, CgTypesAssertionMixin):
         pose = target.Pose(bone, [10, 20, 30, 90, 90, 90])
         m1 = mat4.translation((10, 20, 30))
         m2 = mat4.rotation(math.pi / 2, (1, 0, 0)) * \
-             mat4.rotation(math.pi / 2, (0, 1, 0)) * \
-             mat4.rotation(math.pi / 2, (0, 0, 1))
-             
+            mat4.rotation(math.pi / 2, (0, 1, 0)) * \
+            mat4.rotation(math.pi / 2, (0, 0, 1))
+
         self.assertMat4Equal(pose._calc_mat(n1), m1)
         self.assertMat4Equal(pose._calc_mat(n2), mat4.identity())
         self.assertMat4Equal(pose._calc_mat(n3), m2)
-        
-        
+
+
 if __name__ == '__main__':
     unittest.main()
-    
