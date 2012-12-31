@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
-import numpy as np
 import math
-from cgkit.bvh import BVHReader, Node
-from cgkit.cgtypes import mat3, mat4
+from cgkit.bvh import BVHReader
+from cgkit.cgtypes import mat4
 
 
 class BVHAnimationReader(BVHReader):
@@ -170,5 +169,5 @@ class Pose(object):
         if type(index_or_node) is int:
             index = index_or_node
         else:
-            index = self._bone.node_list.indexof(node)
+            index = self._bone.node_list.indexof(index_or_node)
         return self._positions[index]
