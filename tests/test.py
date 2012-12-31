@@ -11,7 +11,9 @@ from cgkit.cgtypes import mat4
 from cgkit._core import vec3 as _vec3
 from cgkit._core import mat4 as _mat4
 
+
 class CgTypesAssertionMixin(object):
+
     def assertVec3Equal(self, v1, v2):
         if not isinstance(v1, _vec3):
             raise AssertionError("First object is not vec3", v1)
@@ -31,72 +33,134 @@ class CgTypesAssertionMixin(object):
                               itertools.chain.from_iterable(m2)):
             self.assertAlmostEqual(val1, val2)
 
-class BoneTest(unittest.TestCase):
-    root = None
-    def setUp(self):
-        def onHierarchy(root):
+bvh_serial = {"root": None, "frames": None}
+bvh_parallel = {"root": None, "frames": None}
+
+
+def setUpModule():
+
+    class CustomBVHReader(BVHReader):
+        def __init__(self, path=None):
+            BVHReader.__init__(self, path)
+            self.frames = []
+            
+        def onHierarchy(self, root):
             self.root = root
-    
-        reader = BVHReader(os.path.join(os.path.dirname(__file__), "testBVH.bvh"))
-        reader.onHierarchy = onHierarchy
-        reader.read()
+            
+        def onFrame(self, frame):
+            self.frames.append(frame)
+            
+    reader = CustomBVHReader(os.path.join(os.path.dirname(__file__), "testBVH.bvh"))
+    reader.read()
+    bvh_serial["root"] = reader.root
+    bvh_serial["frames"] = reader.frames
         
-    def test_init(self):
-        bone = target.Bone(self.root)
+    reader = CustomBVHReader(os.path.join(os.path.dirname(__file__), "testBVH2.bvh"))
+    reader.read()
+    bvh_parallel["root"] = reader.root
+    bvh_parallel["frames"] = reader.frames
+
+
+class BVHAnimationReaderTest(unittest.TestCase):
+
+    def test_unloaded(self):
+        reader = target.BVHAnimationReader()
+        self.assertIsNone(reader.bone)
+        self.assertIsNone(reader.root)
+        self.assertIsNone(reader.frames)
+        
+    def test_loaded(self):
+        reader = target.BVHAnimationReader(os.path.join(os.path.dirname(__file__), "testBVH.bvh"))
+        reader.read()
+        self.assertIsNotNone(reader.bone)
+        self.assertEqual(reader.bone.root, reader.root)
+        self.assertEqual(len(reader.animation.frames), 2)
+
+
+class BoneTest(unittest.TestCase):
+
+    def test_init_serial(self):
+        bone = target.Bone(bvh_serial["root"])
         self.assertEqual(len(bone.node_list), 4)
         
         self.assertEqual(bone.node_list[0].name, "root_name")
         self.assertEqual(bone.node_list[1].name, "joint1")
         self.assertEqual(bone.node_list[2].name, "joint2")
         self.assertEqual(bone.node_list[3].name, "End Site")
+        
+    def test_init_parallel(self):
+        bone = target.Bone(bvh_parallel["root"])
+        self.assertEqual(len(bone.node_list), 5)
+        
+        self.assertEqual(bone.node_list[0].name, "root_name")
+        self.assertEqual(bone.node_list[1].name, "joint1")
+        self.assertEqual(bone.node_list[2].name, "End Site")
+        self.assertEqual(bone.node_list[3].name, "joint2")
+        self.assertEqual(bone.node_list[4].name, "End Site")
 
     def test_get_bone_index(self):
-        bone = target.Bone(self.root)
+        bone = target.Bone(bvh_serial["root"])
         self.assertEqual(bone.get_bone_index(bone.node_list[0]), 0)
         self.assertEqual(bone.get_bone_index(bone.node_list[3]), 3)
         
-    def test_offset(self):
-        bone = target.Bone(self.root)
+    def test_offset_serial(self):
+        bone = target.Bone(bvh_serial["root"])
         self.assertEqual(bone.get_offset(0), 0)
-        self.assertEqual(bone.get_offset(bone.node_list[0]), 0)
         self.assertEqual(bone.get_offset(1), 6)
+        self.assertEqual(bone.get_offset(2), 9)
         self.assertEqual(bone.get_offset(3), 12)
+        self.assertEqual(bone.get_offset(bone.node_list[0]), 0)
+        self.assertEqual(bone.get_offset(bone.node_list[1]), 6)
+        self.assertEqual(bone.get_offset(bone.node_list[2]), 9)
+        self.assertEqual(bone.get_offset(bone.node_list[3]), 12)
+        
+    def test_offset_parallel(self):
+        bone = target.Bone(bvh_parallel["root"])
+        self.assertEqual(bone.get_offset(0), 0)
+        self.assertEqual(bone.get_offset(1), 6)
+        self.assertEqual(bone.get_offset(2), 9)
+        self.assertEqual(bone.get_offset(3), 9)
+        self.assertEqual(bone.get_offset(4), 12)
+        self.assertEqual(bone.get_offset(bone.node_list[0]), 0)
+        self.assertEqual(bone.get_offset(bone.node_list[1]), 6)
+        self.assertEqual(bone.get_offset(bone.node_list[2]), 9)
+        self.assertEqual(bone.get_offset(bone.node_list[3]), 9)
+        self.assertEqual(bone.get_offset(bone.node_list[4]), 12)
 
-class PoseTest(unittest.TestCase, CgTypesAssertionMixin):
-    root = None
-    frames = None
 
-    def setUp(self):
-        self.root = None
-        self.frames = []
-    
-        def onHierarchy(root):
-            self.root = root
-            
-        def onFrame(frame):
-            self.frames.append(frame)
-    
-        reader = BVHReader(os.path.join(os.path.dirname(__file__), "testBVH.bvh"))
-        reader.onHierarchy = onHierarchy
-        reader.onFrame = onFrame
-        reader.read()
+class AnimationTest(unittest.TestCase):
 
     def test_add_frame(self):
-        anim = target.Animation(target.Bone(self.root))
-        anim.add_frame(self.frames[0])
+        anim = target.Animation(target.Bone(bvh_serial["root"]))
+        anim.add_frame(bvh_serial["frames"][0])
         self.assertEqual(len(anim.frames), 1)
         self.assertListEqual(anim.frames[0], [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-        
-    def test_pose(self):
-        anim = target.Animation(target.Bone(self.root))
-        anim.add_frame(self.frames[0])
-        anim.add_frame(self.frames[1])
+
+class PoseTest(unittest.TestCase, CgTypesAssertionMixin):
+
+    def test_pose_serial(self):
+        anim = target.Animation(target.Bone(bvh_serial["root"]))
+        anim.add_frame(bvh_serial["frames"][0])
+        anim.add_frame(bvh_serial["frames"][1])
         pose = anim.get_pose(0)
         self.assertVec3Equal(pose.get_position(0), vec3(0, 0, 0))
         self.assertVec3Equal(pose.get_position(3), vec3(0, 60, 0))
         
         pose = anim.get_pose(1)
         self.assertVec3Equal(pose.get_position(3), vec3(0, -60, 0))
+
+    def test_pose_parallel(self):
+        anim = target.Animation(target.Bone(bvh_parallel["root"]))
+        anim.add_frame(bvh_parallel["frames"][0])
+        anim.add_frame(bvh_parallel["frames"][1])
+        pose = anim.get_pose(0)
+        self.assertVec3Equal(pose.get_position(0), vec3(0, 0, 0))
+        self.assertVec3Equal(pose.get_position(2), vec3(0, 30, 0))
+        self.assertVec3Equal(pose.get_position(4), vec3(0, 0, 30))
+        
+        pose = anim.get_pose(1)
+        self.assertVec3Equal(pose.get_position(2), vec3(0, -10, 0))
+        self.assertVec3Equal(pose.get_position(4), vec3(0, 0, -10))
         
     def test_calc_matrix(self):
         n1 = Node()

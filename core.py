@@ -1,56 +1,98 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 import math
-from cgkit.bvh import Node
+from cgkit.bvh import BVHReader, Node
 from cgkit.cgtypes import mat3, mat4
 
 
-class Counter(object):
-    index = None
-    
-    def __init__(self):
-        self.index = 0
+class BVHAnimationReader(BVHReader):
+    @property
+    def bone(self):
+        return self._bone
+        
+    @property
+    def root(self):
+        if self._bone is not None:
+            return self._bone.root
+        else:
+            return None
+        
+    @property
+    def frames(self):
+        return self._frames
+        
+    @property
+    def animation(self):
+        if self._animation is None and self._bone is not None:
+            self._animation = Animation(self._bone, self._frames)
+                
+        return self._animation
 
+    def __init__(self, path=None):
+        BVHReader.__init__(self, path)
+        self._bone = None
+        self._animation = None
+        self._frames = None
+            
+    def onHierarchy(self, root):
+        self._bone = Bone(root)
+            
+    def onFrame(self, frame):
+        if self._frames is None:
+            self._frames = []
+        self._frames.append(frame)
 
+        
 class Bone(object):
-    root = None
-    node_list = None
-    param_offset_list = None
+    @property
+    def root(self):
+        return self._root
+        
+    @property
+    def node_list(self):
+        return self._node_list
+        
+    @property
+    def param_offset_list(self):
+        return self._param_offset_list
     
     def __init__(self, root):
-        self.root = root
-        self.node_list = []
-        self.param_offset_list = []
+        self._root = root
+        self._node_list = []
+        self._param_offset_list = []
         
-        self.process_node(root)
+        self.__counter = 0
+        self._process_node(root)
         
-    def process_node(self, node, counter=None):
-        if counter is None:
-            counter = Counter()
-            
-        self.node_list.append(node)
-        self.param_offset_list.append(counter.index)
-        counter.index += len(node.channels)
+    def _process_node(self, node):
+        self._node_list.append(node)
+        self._param_offset_list.append(self.__counter)
+        self.__counter += len(node.channels)
         
         for child in node.children:
-            self.process_node(child, counter)
+            self._process_node(child)
             
     def get_offset(self, index_or_node):
         if type(index_or_node) is int:
             index = index_or_node
         else:
             index = self.get_bone_index(index_or_node)
-        return self.param_offset_list[index]
+        return self._param_offset_list[index]
         
     def get_bone_index(self, node):
-        return self.node_list.index(node)
+        return self._node_list.index(node)
 
 
 class Animation(object):
-    bone = None
-    frames = None
     
-    def __init__(self, bone, frames=None):
+    @classmethod
+    def from_bvh(cls, path):
+        reader = BVHAnimationReader(path)
+        reader.read()
+        
+        return reader.animation
+    
+    def __init__(self, bone=None, frames=None):
         self.bone = bone
         if frames is not None:
             self.frames = frames
@@ -65,11 +107,27 @@ class Animation(object):
 
 
 class Pose(object):
-    matrixes_global = None
-    matrixes_local = None
-    positions = None
-    frame = None
-    bone = None
+
+    @property
+    def matrixes_global(self):
+        return self._matrixes_global
+        
+    @property
+    def matrixes_local(self):
+        return self._matrixes_local
+        
+    @property
+    def positions(self):
+        return self._positions
+    
+    @property
+    def bone(self):
+        return self._bone
+        
+    @property
+    def frame(self):
+        return self._frame
+        
     _mat_funcs = {
         "Xrotation": lambda rot: mat4.rotation(rot * math.pi / 180, [1, 0, 0]),
         "Yrotation": lambda rot: mat4.rotation(rot * math.pi / 180, [0, 1, 0]),
@@ -78,50 +136,41 @@ class Pose(object):
         "Yposition": lambda pos: mat4.translation((0, pos, 0)),
         "Zposition": lambda pos: mat4.translation((0, 0, pos)),
         }
-    __last_matrix = None
 
     def __init__(self, bone, frame):
-        self.matrixes_global = []
-        self.matrixes_local = []
-        self.positions = []
+        self._matrixes_global = []
+        self._matrixes_local = []
+        self._positions = []
         self.__last_matrix = mat4.identity()
-        self.bone = bone
-        self.frame = frame
-        self.process_node(bone.root)
+        self._bone = bone
+        self._frame = frame
+        self._process_node(bone.root)
         
     def _calc_mat(self, node):
         mat = mat4.identity()
         channels = node.channels
-        param_offset = self.bone.get_offset(node)
+        param_offset = self._bone.get_offset(node)
         for i, channel in enumerate(channels):
-            mat *= self._mat_funcs[channel](self.frame[param_offset + i])
+            mat *= self._mat_funcs[channel](self._frame[param_offset + i])
         return mat
 
-    def process_node(self, node):
-        if node.isRoot():
-            rots = self.frame[3:6]
-        elif node.isEndSite():
-            rots = [0, 0, 0]
-        else:
-            index = self.bone.get_offset(node)
-            rots = self.frame[index:index + 3]
-
+    def _process_node(self, node):
         mat = self._calc_mat(node)
         
-        self.positions.append(self.__last_matrix * node.offset)
-        self.matrixes_local.append(mat)
+        self._positions.append(self.__last_matrix * node.offset)
+        self._matrixes_local.append(mat)
         mat_g = self.__last_matrix * mat4.translation(node.offset) * mat
-        self.matrixes_global.append(mat_g)
+        self._matrixes_global.append(mat_g)
         
         for child in node.children:
             self.__last_matrix = mat_g
-            self.process_node(child)
+            self._process_node(child)
 
     def get_position(self, index_or_node):
         if type(index_or_node) is int:
             index = index_or_node
         else:
-            index = self.bone.node_list.indexof(node)
-        return self.positions[index]
+            index = self._bone.node_list.indexof(node)
+        return self._positions[index]
 
     
