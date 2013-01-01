@@ -3,7 +3,7 @@ import os
 import math
 import itertools
 import unittest
-import core as target
+import BVHToolkit
 from cgkit.bvh import Node
 from cgkit.bvh import BVHReader
 from cgkit.cgtypes import vec3
@@ -67,13 +67,13 @@ def setUpModule():
 class BVHAnimationReaderTest(unittest.TestCase):
 
     def test_unloaded(self):
-        reader = target.BVHAnimationReader(bvh_serial_path)
+        reader = BVHToolkit.BVHAnimationReader(bvh_serial_path)
         self.assertIsNone(reader.bone)
         self.assertIsNone(reader.root)
         self.assertIsNone(reader.frames)
 
     def test_loaded(self):
-        reader = target.BVHAnimationReader(bvh_parallel_path)
+        reader = BVHToolkit.BVHAnimationReader(bvh_parallel_path)
         reader.read()
         self.assertIsNotNone(reader.bone)
         self.assertEqual(reader.bone.root, reader.root)
@@ -83,7 +83,7 @@ class BVHAnimationReaderTest(unittest.TestCase):
 class BoneTest(unittest.TestCase):
 
     def test_init_serial(self):
-        bone = target.Bone(bvh_serial["root"])
+        bone = BVHToolkit.Bone(bvh_serial["root"])
         self.assertEqual(len(bone.node_list), 4)
 
         self.assertEqual(bone.node_list[0].name, "root_name")
@@ -92,7 +92,7 @@ class BoneTest(unittest.TestCase):
         self.assertEqual(bone.node_list[3].name, "End Site")
 
     def test_init_parallel(self):
-        bone = target.Bone(bvh_parallel["root"])
+        bone = BVHToolkit.Bone(bvh_parallel["root"])
         self.assertEqual(len(bone.node_list), 5)
 
         self.assertEqual(bone.node_list[0].name, "root_name")
@@ -102,12 +102,12 @@ class BoneTest(unittest.TestCase):
         self.assertEqual(bone.node_list[4].name, "End Site")
 
     def test_get_node_index(self):
-        bone = target.Bone(bvh_serial["root"])
+        bone = BVHToolkit.Bone(bvh_serial["root"])
         self.assertEqual(bone.get_node_index(bone.node_list[0]), 0)
         self.assertEqual(bone.get_node_index(bone.node_list[3]), 3)
 
     def test_offset_serial(self):
-        bone = target.Bone(bvh_serial["root"])
+        bone = BVHToolkit.Bone(bvh_serial["root"])
         self.assertEqual(bone.get_param_offset(0), 0)
         self.assertEqual(bone.get_param_offset(1), 6)
         self.assertEqual(bone.get_param_offset(2), 9)
@@ -118,7 +118,7 @@ class BoneTest(unittest.TestCase):
         self.assertEqual(bone.get_param_offset(bone.node_list[3]), 12)
 
     def test_offset_parallel(self):
-        bone = target.Bone(bvh_parallel["root"])
+        bone = BVHToolkit.Bone(bvh_parallel["root"])
         self.assertEqual(bone.get_param_offset(0), 0)
         self.assertEqual(bone.get_param_offset(1), 6)
         self.assertEqual(bone.get_param_offset(2), 9)
@@ -134,7 +134,7 @@ class BoneTest(unittest.TestCase):
 class AnimationTest(unittest.TestCase):
 
     def test_add_frame(self):
-        anim = target.Animation(target.Bone(bvh_serial["root"]))
+        anim = BVHToolkit.Animation(BVHToolkit.Bone(bvh_serial["root"]))
         anim.add_frame(bvh_serial["frames"][0])
         self.assertEqual(len(anim.frames), 1)
         self.assertListEqual(anim.frames[0],
@@ -144,7 +144,7 @@ class AnimationTest(unittest.TestCase):
 class PoseTest(unittest.TestCase, CgTypesAssertionMixin):
 
     def test_pose_serial(self):
-        anim = target.Animation(target.Bone(bvh_serial["root"]))
+        anim = BVHToolkit.Animation(BVHToolkit.Bone(bvh_serial["root"]))
         anim.add_frame(bvh_serial["frames"][0])
         anim.add_frame(bvh_serial["frames"][1])
         pose = anim.get_pose(0)
@@ -155,7 +155,7 @@ class PoseTest(unittest.TestCase, CgTypesAssertionMixin):
         self.assertVec3Equal(pose.get_position(3), vec3(0, -60, 0))
 
     def test_pose_parallel(self):
-        anim = target.Animation(target.Bone(bvh_parallel["root"]))
+        anim = BVHToolkit.Animation(BVHToolkit.Bone(bvh_parallel["root"]))
         anim.add_frame(bvh_parallel["frames"][0])
         anim.add_frame(bvh_parallel["frames"][1])
         pose = anim.get_pose(0)
@@ -177,9 +177,9 @@ class PoseTest(unittest.TestCase, CgTypesAssertionMixin):
 
         n1.children.append(n2)
         n2.children.append(n3)
-        bone = target.Bone(n1)
+        bone = BVHToolkit.Bone(n1)
 
-        pose = target.Pose(bone, [10, 20, 30, 90, 90, 90])
+        pose = BVHToolkit.Pose(bone, [10, 20, 30, 90, 90, 90])
         m1 = mat4.translation((10, 20, 30))
         m2 = mat4.rotation(math.pi / 2, (1, 0, 0)) * \
             mat4.rotation(math.pi / 2, (0, 1, 0)) * \
