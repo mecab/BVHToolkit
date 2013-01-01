@@ -101,34 +101,34 @@ class BoneTest(unittest.TestCase):
         self.assertEqual(bone.node_list[3].name, "joint2")
         self.assertEqual(bone.node_list[4].name, "End Site")
 
-    def test_get_bone_index(self):
+    def test_get_node_index(self):
         bone = target.Bone(bvh_serial["root"])
-        self.assertEqual(bone.get_bone_index(bone.node_list[0]), 0)
-        self.assertEqual(bone.get_bone_index(bone.node_list[3]), 3)
+        self.assertEqual(bone.get_node_index(bone.node_list[0]), 0)
+        self.assertEqual(bone.get_node_index(bone.node_list[3]), 3)
 
     def test_offset_serial(self):
         bone = target.Bone(bvh_serial["root"])
-        self.assertEqual(bone.get_offset(0), 0)
-        self.assertEqual(bone.get_offset(1), 6)
-        self.assertEqual(bone.get_offset(2), 9)
-        self.assertEqual(bone.get_offset(3), 12)
-        self.assertEqual(bone.get_offset(bone.node_list[0]), 0)
-        self.assertEqual(bone.get_offset(bone.node_list[1]), 6)
-        self.assertEqual(bone.get_offset(bone.node_list[2]), 9)
-        self.assertEqual(bone.get_offset(bone.node_list[3]), 12)
+        self.assertEqual(bone.get_param_offset(0), 0)
+        self.assertEqual(bone.get_param_offset(1), 6)
+        self.assertEqual(bone.get_param_offset(2), 9)
+        self.assertEqual(bone.get_param_offset(3), 12)
+        self.assertEqual(bone.get_param_offset(bone.node_list[0]), 0)
+        self.assertEqual(bone.get_param_offset(bone.node_list[1]), 6)
+        self.assertEqual(bone.get_param_offset(bone.node_list[2]), 9)
+        self.assertEqual(bone.get_param_offset(bone.node_list[3]), 12)
 
     def test_offset_parallel(self):
         bone = target.Bone(bvh_parallel["root"])
-        self.assertEqual(bone.get_offset(0), 0)
-        self.assertEqual(bone.get_offset(1), 6)
-        self.assertEqual(bone.get_offset(2), 9)
-        self.assertEqual(bone.get_offset(3), 9)
-        self.assertEqual(bone.get_offset(4), 12)
-        self.assertEqual(bone.get_offset(bone.node_list[0]), 0)
-        self.assertEqual(bone.get_offset(bone.node_list[1]), 6)
-        self.assertEqual(bone.get_offset(bone.node_list[2]), 9)
-        self.assertEqual(bone.get_offset(bone.node_list[3]), 9)
-        self.assertEqual(bone.get_offset(bone.node_list[4]), 12)
+        self.assertEqual(bone.get_param_offset(0), 0)
+        self.assertEqual(bone.get_param_offset(1), 6)
+        self.assertEqual(bone.get_param_offset(2), 9)
+        self.assertEqual(bone.get_param_offset(3), 9)
+        self.assertEqual(bone.get_param_offset(4), 12)
+        self.assertEqual(bone.get_param_offset(bone.node_list[0]), 0)
+        self.assertEqual(bone.get_param_offset(bone.node_list[1]), 6)
+        self.assertEqual(bone.get_param_offset(bone.node_list[2]), 9)
+        self.assertEqual(bone.get_param_offset(bone.node_list[3]), 9)
+        self.assertEqual(bone.get_param_offset(bone.node_list[4]), 12)
 
 
 class AnimationTest(unittest.TestCase):

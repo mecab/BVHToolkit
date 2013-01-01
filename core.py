@@ -5,6 +5,10 @@ from cgkit.cgtypes import mat4
 
 
 class BVHAnimationReader(BVHReader):
+    """
+    Custom BVHReader to create Animation
+    """
+
     @property
     def bone(self):
         return self._bone
@@ -28,6 +32,10 @@ class BVHAnimationReader(BVHReader):
         return self._animation
 
     def __init__(self, path=None):
+        """
+        :param str path: Path to a BVH file.
+        """
+
         BVHReader.__init__(self, path)
         self._bone = None
         self._animation = None
@@ -43,16 +51,71 @@ class BVHAnimationReader(BVHReader):
 
 
 class Bone(object):
+    """
+    A wrapper class of the Node class to handle it easily
+
+    >>> from cgkit.bvh import Node
+    >>> n0 = Node()
+    >>> n0.channels = ["Xposition", "Yposition"]
+    >>> n1 = Node()
+    >>> n1.channels = ["Xrotation"]
+    >>> n1_1 = Node()
+    >>> n1_1.channels = ["Xrotation"]
+    >>> n2 = Node()
+    >>> n0.children.append(n1)
+    >>> n0.children.append(n2)
+    >>> n1.children.append(n1_1)
+    >>> bone = Bone(n0)
+
+    >>> bone.node_list == [n0, n1, n1_1, n2]
+    True
+
+    >>> bone.get_node_index(n0)
+    0
+    >>> bone.get_node_index(n1)
+    1
+    >>> bone.get_node_index(n1_1)
+    2
+    >>> bone.get_node_index(n2)
+    3
+
+    >>> bone.get_param_offset(n1)
+    2
+    >>> bone.get_param_offset(n1_1)
+    3
+    >>> bone.get_param_offset(n2)
+    4
+    """
+
     @property
     def root(self):
         return self._root
 
     @property
     def node_list(self):
+        """
+        A list which contains nodes. They are ordered by
+        the same order which it described in the HIERARCHY part of the BVH.
+        In other word, order of a depth first walk of the HIERARCHY.
+
+        :rtype: list of cgkit.bvh.Node
+        :return: list of depth first walked nodes
+        """
         return self._node_list
 
     @property
     def param_offset_list(self):
+        """
+        A list of start index of channel parameters in frame, for the node
+        correspond to the one in node_list.
+        You can get channel parameters for the node node_list[i] by:
+
+        frame[param_offset_list[i]:param_offset_list[i] + \
+        len(node_list[i].channels)]
+
+        :rtype: list of int
+        :return: list of start index of channel parameters in frame
+        """
         return self._param_offset_list
 
     def __init__(self, root):
@@ -71,14 +134,23 @@ class Bone(object):
         for child in node.children:
             self._process_node(child)
 
-    def get_offset(self, index_or_node):
+    def get_param_offset(self, index_or_node):
+        """
+        Shortcut to param_offset_list[i] or
+        param_offset_list[node_list.index(node)]
+        """
+
         if type(index_or_node) is int:
             index = index_or_node
         else:
-            index = self.get_bone_index(index_or_node)
+            index = self.get_node_index(index_or_node)
         return self._param_offset_list[index]
 
-    def get_bone_index(self, node):
+    def get_node_index(self, node):
+        """
+        Shortcut to node_list.index(node)
+        """
+
         return self._node_list.index(node)
 
 
@@ -106,6 +178,24 @@ class Animation(object):
 
 
 class Pose(object):
+    """
+    Represent the pose of the bone in the specific frame.
+
+    >>> from cgkit.bvh import Node
+    >>> n0 = Node()
+    >>> n0.channels = ["Xposition", "Yposition"]
+    >>> n1 = Node()
+    >>> n1.offset = (10, 0, 0)
+    >>> n0.children.append(n1)
+
+    >>> pose = Pose(Bone(n0), [0, 0])
+    >>> pose.get_position(n1)
+    (10, 0, 0)
+
+    >>> pose = Pose(Bone(n0), [10, 10])
+    >>> pose.get_position(n1)
+    (20, 10, 0)
+    """
 
     @property
     def matrixes_global(self):
@@ -148,7 +238,7 @@ class Pose(object):
     def _calc_mat(self, node):
         mat = mat4.identity()
         channels = node.channels
-        param_offset = self._bone.get_offset(node)
+        param_offset = self._bone.get_param_offset(node)
         for i, channel in enumerate(channels):
             mat *= self._mat_funcs[channel](self._frame[param_offset + i])
         return mat
@@ -166,8 +256,20 @@ class Pose(object):
             self._process_node(child)
 
     def get_position(self, index_or_node):
+        """
+        Returns a global position of given node in the frame
+        """
+
         if type(index_or_node) is int:
             index = index_or_node
         else:
-            index = self._bone.node_list.indexof(index_or_node)
+            index = self._bone.node_list.index(index_or_node)
         return self._positions[index]
+
+
+def _test():
+    import doctest
+    doctest.testmod()
+
+if __name__ == '__main__':
+    _test()
