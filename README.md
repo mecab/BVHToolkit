@@ -4,8 +4,13 @@ A helper library for [cgkit]
 This provides some useful function to handle BVH animation format with cgkit.
 With this library, you can easily get node positions in the specific frame.
 
+Requirements
+------------
+* Python 2.7
+* cgkit>=2.0.0 (Currently it is not registered to PyPI, so please download from [sourceforge])
+
 Usage
----------- 
+-----
     >>> from BVHToolkit import Animation, Pose, Bone
     >>> from cgkit.bvh import Node
 
@@ -33,3 +38,4 @@ Usage
     (20, 10, 0)
 
   [cgkit]: http://cgkit.sourceforge.net/
+  [sourceforge]: http://sourceforge.net/projects/cgkit/files/cgkit/
