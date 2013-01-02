@@ -3,6 +3,7 @@ import os
 import math
 import itertools
 import unittest
+import doctest
 import BVHToolkit
 from cgkit.bvh import Node
 from cgkit.bvh import BVHReader
@@ -189,6 +190,12 @@ class PoseTest(unittest.TestCase, CgTypesAssertionMixin):
         self.assertMat4Equal(pose._calc_mat(n2), mat4.identity())
         self.assertMat4Equal(pose._calc_mat(n3), m2)
 
+
+def load_tests(loader, tests, ignore):
+    """ Add doctests to the test suite. """
+
+    tests.addTests(doctest.DocTestSuite(BVHToolkit._core))
+    return tests
 
 if __name__ == '__main__':
     unittest.main()
