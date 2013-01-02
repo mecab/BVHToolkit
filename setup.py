@@ -30,5 +30,5 @@ setup(name='BVHToolkit',
       entry_points="""
       # -*- Entry points: -*-
       """,
-      test_suite="BVHToolkit"
+      test_suite="tests"
       )
