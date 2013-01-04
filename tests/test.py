@@ -140,7 +140,14 @@ class AnimationTest(unittest.TestCase):
         self.assertEqual(len(anim.frames), 1)
         self.assertListEqual(anim.frames[0],
                              [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
-
+                             
+    def test_poses(self):
+        anim = BVHToolkit.Animation(BVHToolkit.Bone(bvh_serial["root"]))
+        anim.add_frame(bvh_serial["frames"][0])
+        anim.add_frame(bvh_serial["frames"][1])
+        self.assertEqual(len([x for x in anim.poses]), 2)
+        self.assertEqual(type(anim.poses[0]), BVHToolkit.Pose)
+        self.assertEqual(type(anim.poses[1]), BVHToolkit.Pose)
 
 class PoseTest(unittest.TestCase, CgTypesAssertionMixin):
 

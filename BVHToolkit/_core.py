@@ -175,6 +175,18 @@ class Animation(object):
 
     def get_pose(self, frame_num):
         return Pose(self.bone, self.frames[frame_num])
+    
+    @property
+    def poses(self):
+        class _poses:
+            def __iter__(_):
+                for frame in self.frames:
+                    yield Pose(self.bone, frame)
+                
+            def __getitem__(_, index):
+                return self.get_pose(index)
+                
+        return _poses()
 
 
 class Pose(object):
