@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import math
+from collections import defaultdict
 from cgkit.bvh import BVHReader
 from cgkit.cgtypes import mat4
 
@@ -209,13 +210,79 @@ class Pose(object):
     (20, 10, 0)
     """
 
+    class Params(defaultdict):
+        """
+        Keep channels informations and correspond channel values.
+        Please note ROTATIONS SHOULD BE GIVEN BY DEGREES, BUT IT RETURNS IN RADIAN.
+
+        >>> import math
+        >>> from cgkit.cgtypes import mat4
+        >>>
+        >>> params = Pose.Params(["Xposition", "Yposition", "Xrotation", "Yrotation",])
+        >>> params["Xposition"] = 10
+        >>> params["Yposition"] = 20
+        >>> params["Xrotation"] = 90 # set by deg
+        >>> params["Yrotation"] = 90 # also set by deg
+        >>>
+        >>> params["Xposition"]
+        10
+        >>> params["Yposition"]
+        20
+        >>> params["Xrotation"] == math.pi / 2 # THIS RETURNS IN RADIANS
+        True
+        >>> params["Yrotation"] == math.pi / 2 # THIS RETURNS IN RADIANS
+        True
+        >>> params.translation
+        (10, 20, 0.0)
+        >>> params.rotation == (math.pi / 2, math.pi / 2, 0) # !!NOTE!! rotation returns
+        True
+        >>> params.matrix
+        [6.12323e-017, 0, 1, 10]
+        [1, 6.12323e-017, -6.12323e-017, 20]
+        [-6.12323e-017, 1, 3.7494e-033, 0]
+        [0, 0, 0, 1]
+        """
+        _mat_funcs = {
+            "Xrotation": lambda rot: mat4.rotation(rot, [1, 0, 0]),
+            "Yrotation": lambda rot: mat4.rotation(rot, [0, 1, 0]),
+            "Zrotation": lambda rot: mat4.rotation(rot, [0, 0, 1]),
+            "Xposition": lambda pos: mat4.translation((pos, 0, 0)),
+            "Yposition": lambda pos: mat4.translation((0, pos, 0)),
+            "Zposition": lambda pos: mat4.translation((0, 0, pos)),
+        }
+        
+        def __init__(self, channels):
+            self._channels = channels
+            defaultdict.__init__(self, float)
+        
+        def __setitem__(self, key, value):
+            if key in ("Xrotation", "Yrotation", "Zrotation"):
+                value = value * math.pi / 180
+
+            defaultdict.__setitem__(self, key, value)
+
+        @property
+        def rotation(self):
+            return (self["Xrotation"], self["Yrotation"], self["Zrotation"])
+
+        @property
+        def translation(self):
+            return (self["Xposition"], self["Yposition"], self["Zposition"])
+
+        @property
+        def matrix(self):
+            mat = mat4.identity()
+            for channel in self._channels:
+                mat *= self._mat_funcs[channel](self[channel])
+            return mat
+
     @property
     def matrixes_global(self):
         return self._matrixes_global
 
     @property
-    def matrixes_local(self):
-        return self._matrixes_local
+    def local_params(self):
+        return self._local_params
 
     @property
     def positions(self):
@@ -229,53 +296,49 @@ class Pose(object):
     def frame(self):
         return self._frame
 
-    _mat_funcs = {
-        "Xrotation": lambda rot: mat4.rotation(rot * math.pi / 180, [1, 0, 0]),
-        "Yrotation": lambda rot: mat4.rotation(rot * math.pi / 180, [0, 1, 0]),
-        "Zrotation": lambda rot: mat4.rotation(rot * math.pi / 180, [0, 0, 1]),
-        "Xposition": lambda pos: mat4.translation((pos, 0, 0)),
-        "Yposition": lambda pos: mat4.translation((0, pos, 0)),
-        "Zposition": lambda pos: mat4.translation((0, 0, pos)),
-    }
-
     def __init__(self, bone, frame):
         self._matrixes_global = []
-        self._matrixes_local = []
+        self._local_params = []
         self._positions = []
         self.__last_matrix = mat4.identity()
         self._bone = bone
         self._frame = frame
         self._process_node(bone.root)
 
-    def _calc_mat(self, node):
-        mat = mat4.identity()
+    def _create_params(self, node):
         channels = node.channels
+        params = self.Params(channels)
         param_offset = self._bone.get_param_offset(node)
         for i, channel in enumerate(channels):
-            mat *= self._mat_funcs[channel](self._frame[param_offset + i])
-        return mat
+            param = self._frame[param_offset + i]
+            params[channel] = param
+        return params
 
     def _process_node(self, node):
-        mat = self._calc_mat(node)
-
+        params = self._create_params(node)
+        mat = params.matrix
+        self._local_params.append(params)
         self._positions.append(self.__last_matrix * node.offset)
-        self._matrixes_local.append(mat)
         mat_g = self.__last_matrix * mat4.translation(node.offset) * mat
         self._matrixes_global.append(mat_g)
 
         for child in node.children:
             self.__last_matrix = mat_g
             self._process_node(child)
+            
+    def _ensure_index(self, index_or_node):
+        if type(index_or_node) is int:
+            index = index_or_node
+        else:
+            index = self._bone.node_list.index(index_or_node)
+
+        return index
 
     def get_position(self, index_or_node):
         """
         Returns a global position of given node in the frame
         """
-
-        if type(index_or_node) is int:
-            index = index_or_node
-        else:
-            index = self._bone.node_list.index(index_or_node)
+        index = self._ensure_index(index_or_node)
         return self._positions[index]
 
 

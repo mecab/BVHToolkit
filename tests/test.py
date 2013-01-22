@@ -175,6 +175,42 @@ class PoseTest(unittest.TestCase, CgTypesAssertionMixin):
         self.assertVec3Equal(pose.get_position(2), vec3(0, -10, 0))
         self.assertVec3Equal(pose.get_position(4), vec3(0, 0, -10))
 
+    def test_params(self):
+        n1 = Node()
+        n1.channels = ["Xposition", "Yposition", "Zposition"]
+        n2 = Node()
+        n2.channels = []
+        n3 = Node()
+        n3.channels = ["Xrotation", "Yrotation", "Zrotation"]
+
+        n1.children.append(n2)
+        n2.children.append(n3)
+        bone = BVHToolkit.Bone(n1)
+
+        pose = BVHToolkit.Pose(bone, [10, 20, 30, 90, 90, 90])
+
+        params = pose._create_params(n1)
+        self.assertAlmostEqual(params["Xposition"], 10)
+        self.assertAlmostEqual(params["Yposition"], 20)
+        self.assertAlmostEqual(params["Zposition"], 30)
+        self.assertAlmostEqual(params["Xrotation"], 0)
+        self.assertAlmostEqual(params["Yrotation"], 0)
+        self.assertAlmostEqual(params["Zrotation"], 0)
+
+        self.assertTupleEqual(params.translation, (10, 20, 30))
+        self.assertTupleEqual(params.rotation, (0, 0, 0))
+
+        params = pose._create_params(n3)
+        self.assertAlmostEqual(params["Xposition"], 0)
+        self.assertAlmostEqual(params["Yposition"], 0)
+        self.assertAlmostEqual(params["Zposition"], 0)
+        self.assertAlmostEqual(params["Xrotation"], math.pi / 2)
+        self.assertAlmostEqual(params["Yrotation"], math.pi / 2)
+        self.assertAlmostEqual(params["Zrotation"], math.pi / 2)
+
+        self.assertTupleEqual(params.translation, (0, 0, 0))
+        self.assertTupleEqual(params.rotation, (math.pi / 2, math.pi / 2, math.pi / 2))
+
     def test_calc_matrix(self):
         n1 = Node()
         n1.channels = ["Xposition", "Yposition", "Zposition"]
@@ -193,9 +229,9 @@ class PoseTest(unittest.TestCase, CgTypesAssertionMixin):
             mat4.rotation(math.pi / 2, (0, 1, 0)) * \
             mat4.rotation(math.pi / 2, (0, 0, 1))
 
-        self.assertMat4Equal(pose._calc_mat(n1), m1)
-        self.assertMat4Equal(pose._calc_mat(n2), mat4.identity())
-        self.assertMat4Equal(pose._calc_mat(n3), m2)
+        self.assertMat4Equal(pose._create_params(n1).matrix, m1)
+        self.assertMat4Equal(pose._create_params(n2).matrix, mat4.identity())
+        self.assertMat4Equal(pose._create_params(n3).matrix, m2)
 
 
 def load_tests(loader, tests, ignore):
