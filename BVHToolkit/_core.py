@@ -318,9 +318,15 @@ class Pose(object):
         params = self._create_params(node)
         mat = params.matrix
         self._local_params.append(params)
-        self._positions.append(self.__last_matrix * node.offset)
-        mat_g = self.__last_matrix * mat4.translation(node.offset) * mat
-        self._matrixes_global.append(mat_g)
+        if node is self._bone.root:
+            mat_g = mat4.translation(node.offset) * params.matrix
+            self.__last_matrix = mat_g
+            self._matrixes_global.append(mat_g)
+            self._positions.append(mat_g * (0, 0, 0))
+        else:
+            self._positions.append(self.__last_matrix * node.offset)
+            mat_g = self.__last_matrix * mat4.translation(node.offset) * mat
+            self._matrixes_global.append(mat_g)
 
         for child in node.children:
             self.__last_matrix = mat_g
