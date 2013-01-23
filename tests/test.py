@@ -165,7 +165,10 @@ class PoseTest(unittest.TestCase, CgTypesAssertionMixin):
         self.assertVec3Equal(pose.get_position(4), vec3(0, 0, 30))
 
         pose = anim.get_pose(1)
+        self.assertVec3Equal(pose.get_position(0), vec3(0, 0, 0))
+        self.assertVec3Equal(pose.get_position(1), vec3(0, 10, 0))
         self.assertVec3Equal(pose.get_position(2), vec3(0, -10, 0))
+        self.assertVec3Equal(pose.get_position(3), vec3(0, 0, 10))
         self.assertVec3Equal(pose.get_position(4), vec3(0, 0, -10))
 
     def test_calc_matrix(self):
@@ -189,6 +192,18 @@ class PoseTest(unittest.TestCase, CgTypesAssertionMixin):
         self.assertMat4Equal(pose._calc_mat(n1), m1)
         self.assertMat4Equal(pose._calc_mat(n2), mat4.identity())
         self.assertMat4Equal(pose._calc_mat(n3), m2)
+
+    def test_root_position(self):
+        n1 = Node()
+        n1.offset = (10, 10, 10)
+        n1.channels = ["Xposition", "Yposition", "Zposition"]
+        bone = BVHToolkit.Bone(n1)
+        anim = BVHToolkit.Animation(bone)
+        anim.add_frame([0, 0, 0])
+        anim.add_frame([10, 20, 30])
+
+        pose = anim.get_pose(1)
+        self.assertTupleEqual(tuple(pose.get_position(0)), (20, 30, 40))
 
 
 def load_tests(loader, tests, ignore):
