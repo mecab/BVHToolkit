@@ -39,3 +39,11 @@ Usage
 
   [cgkit]: http://cgkit.sourceforge.net/
   [sourceforge]: http://sourceforge.net/projects/cgkit/files/cgkit/
+
+ChangeLog
+---------
+* v0.9
+    * Fixed critical bug that the node positions was not calculated correctly with the root node with xPosition channels.
+
+* v0.8
+    * Initial Release.
