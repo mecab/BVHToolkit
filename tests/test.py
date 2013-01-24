@@ -249,6 +249,18 @@ class PoseTest(unittest.TestCase, CgTypesAssertionMixin):
         params = pose._create_params(n1)
         self.assertTupleEqual(tuple(pose.get_position(0)), (20, 30, 40))
 
+    def test_root_position(self):
+        n1 = Node()
+        n1.offset = (10, 10, 10)
+        n1.channels = ["Xposition", "Yposition", "Zposition"]
+        bone = BVHToolkit.Bone(n1)
+        anim = BVHToolkit.Animation(bone)
+        anim.add_frame([0, 0, 0])
+        anim.add_frame([10, 20, 30])
+
+        pose = anim.get_pose(1)
+        self.assertTupleEqual(tuple(pose.get_position(0)), (20, 30, 40))
+
 
 def load_tests(loader, tests, ignore):
     """ Add doctests to the test suite. """
