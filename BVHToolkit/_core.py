@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 import math
 from cgkit.bvh import BVHReader
-from cgkit.cgtypes import mat4
+from cgkit.cgtypes import mat4, vec3
 
 
 class BVHAnimationReader(BVHReader):
@@ -190,11 +190,11 @@ class Pose(object):
 
     >>> pose = Pose(Bone(n0), [0, 0])
     >>> pose.get_position(n1)
-    (10, 0, 0)
+    vec3(10.0, 0.0, 0.0)
 
     >>> pose = Pose(Bone(n0), [10, 10])
     >>> pose.get_position(n1)
-    (20, 10, 0)
+    vec3(20.0, 10.0, 0.0)
     """
 
     @property
@@ -250,10 +250,11 @@ class Pose(object):
             mat_g = mat4.translation(node.offset) * mat
             self.__last_matrix = mat_g
             self._matrixes_global.append(mat_g)
-            self._positions.append(mat_g * (0, 0, 0))
+            self._positions.append(mat_g * vec3(0, 0, 0))
         else:
-            self._positions.append(self.__last_matrix * node.offset)
-            mat_g = self.__last_matrix * mat4.translation(node.offset) * mat
+            offset = vec3(node.offset)
+            self._positions.append(self.__last_matrix * offset)
+            mat_g = self.__last_matrix * mat4.translation(offset) * mat
             self._matrixes_global.append(mat_g)
 
         for child in node.children:
@@ -269,6 +270,7 @@ class Pose(object):
             index = index_or_node
         else:
             index = self._bone.node_list.index(index_or_node)
+
         return self._positions[index]
 
 

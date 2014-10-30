@@ -9,25 +9,23 @@ from cgkit.bvh import Node
 from cgkit.bvh import BVHReader
 from cgkit.cgtypes import vec3
 from cgkit.cgtypes import mat4
-from cgkit._core import vec3 as _vec3
-from cgkit._core import mat4 as _mat4
 
 
 class CgTypesAssertionMixin(object):
 
     def assertVec3Equal(self, v1, v2):
-        if not isinstance(v1, _vec3):
+        if not isinstance(v1, vec3):
             raise AssertionError("First object is not vec3", v1)
-        if not isinstance(v2, _vec3):
+        if not isinstance(v2, vec3):
             raise AssertionError("Second object is not vec3", v2)
 
         for val1, val2 in zip(v1, v2):
             self.assertAlmostEqual(val1, val2)
 
     def assertMat4Equal(self, m1, m2):
-        if not isinstance(m1, _mat4):
+        if not isinstance(m1, mat4):
             raise AssertionError("First object is not mat4", m1)
-        if not isinstance(m2, _mat4):
+        if not isinstance(m2, mat4):
             raise AssertionError("Second object is not mat4", m2)
 
         for val1, val2 in zip(itertools.chain.from_iterable(m1),
