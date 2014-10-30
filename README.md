@@ -42,7 +42,7 @@ Usage
 
 ChangeLog
 ---------
-* v0.9
+* v0.81
     * Fixed critical bug that the node positions was not calculated correctly with the root node with xPosition channels.
 
 * v0.8
