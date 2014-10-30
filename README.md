@@ -15,7 +15,7 @@ Usage
     >>> from cgkit.bvh import Node
 
     >>> """Load BVH and get node positions."""
-    >>> animation = BVHToolkit.Animation("path_to_bvh.bvh")
+    >>> animation = Animation.from_bvh("path_to_bvh.bvh")
     >>> pose = animation.get_pose(3)    # get pose at third frame
     >>> pose.get_position(0)    # get position of the root node
     (0, 0, 0)
